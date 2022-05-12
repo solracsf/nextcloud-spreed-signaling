@@ -123,7 +123,7 @@ Message format (Client -> Server):
       "id": "unique-request-id",
       "type": "hello",
       "hello": {
-        "version": "the-protocol-version-must-be-1.0",
+        "version": "the-protocol-version",
         "auth": {
           "url": "the-url-to-the-auth-backend",
           "params": {
@@ -142,7 +142,7 @@ Message format (Server -> Client):
         "sessionid": "the-unique-session-id",
         "resumeid": "the-unique-resume-id",
         "userid": "the-user-id-for-known-users",
-        "version": "the-protocol-version-must-be-1.0",
+        "version": "the-protocol-version",
         "server": {
           "features": ["optional", "list, "of", "feature", "ids"],
           ...additional information about the server...
@@ -151,12 +151,56 @@ Message format (Server -> Client):
     }
 
 
+### Protocol version "1.0"
+
+For protocol version `1.0` in the `hello` request, the `params` from the `auth`
+field are sent to the Nextcloud backend for [validation](#backend-validation).
+
+
+### Protocol version "2.0"
+
+For protocol version `2.0` in the `hello` request, the `params` from the `auth`
+field must contain a `token` entry containing a [JWT](https://jwt.io/).
+
+The JWT must contain the following fields:
+- `iss`: URL of the Nextcloud server that issued the token.
+- `iat`: Timestamp when the token has been issued.
+- `exp`: Timestamp of the token expiration.
+- `sub`: User Id (if known).
+- `userdata`: Optional JSON string containing more user data.
+
+It must be signed with an RSA, ECDSA or Ed25519 key.
+
+The public key is retrieved from the capabilities of the Nextcloud instance
+in `config` key `hello-v2-token-key` inside `signaling`.
+
+```
+        "spreed": {
+          "features": [
+            "audio",
+            "video",
+            "chat-v2",
+            "conversation-v4",
+            ...
+          ],
+          "config": {
+            …
+            "signaling": {
+              "hello-v2-token-key": "-----BEGIN RSA PUBLIC KEY----- ..."
+            }
+          }
+        },
+```
+
+
 ### Backend validation
 
-The server validates the connection request against the passed auth backend
-(needs to make sure the passed url / hostname is in a whitelist). It performs
-a POST request and passes the provided `params` as JSON payload in the body
-of the request.
+For `hello` protocol version `1.0`, the server validates the connection request
+against the passed auth backend (needs to make sure the passed url / hostname
+is in a whitelist).
+
+It performs a POST request and passes the provided `params` as JSON payload in
+the body of the request.
 
 Message format (Server -> Auth backend):
 
@@ -215,7 +259,7 @@ Message format (Client -> Server):
       "id": "unique-request-id",
       "type": "hello",
       "hello": {
-        "version": "the-protocol-version-must-be-1.0",
+        "version": "the-protocol-version",
         "auth": {
           "type": "the-client-type",
           ...other attributes depending on the client type...
@@ -273,7 +317,7 @@ Message format (Client -> Server):
       "id": "unique-request-id",
       "type": "hello",
       "hello": {
-        "version": "the-protocol-version-must-be-1.0",
+        "version": "the-protocol-version",
         "resumeid": "the-resume-id-from-the-original-hello-response"
       }
     }
@@ -285,7 +329,7 @@ Message format (Server -> Client):
       "type": "hello",
       "hello": {
         "sessionid": "the-unique-session-id",
-        "version": "the-protocol-version-must-be-1.0"
+        "version": "the-protocol-version"
       }
     }
 
