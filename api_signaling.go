@@ -26,11 +26,16 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/golang-jwt/jwt"
 )
 
 const (
-	// Version that must be sent in a "hello" message.
-	HelloVersion = "1.0"
+	// Version 1.0 validates auth params against the Nextcloud instance.
+	HelloVersionV1 = "1.0"
+
+	// Version 2.0 validates auth params encoded as JWT.
+	HelloVersionV2 = "2.0"
 )
 
 // ClientMessage is a message that is sent from a client to the server.
@@ -268,6 +273,23 @@ func (p *ClientTypeInternalAuthParams) CheckValid() error {
 	return nil
 }
 
+type HelloV2AuthParams struct {
+	Token string `json:"token"`
+}
+
+func (p *HelloV2AuthParams) CheckValid() error {
+	if p.Token == "" {
+		return fmt.Errorf("token missing")
+	}
+	return nil
+}
+
+type HelloV2TokenClaims struct {
+	jwt.StandardClaims
+
+	UserData *json.RawMessage `json:"userdata,omitempty"`
+}
+
 type HelloClientMessageAuth struct {
 	// The client type that is connecting. Leave empty to use the default
 	// "HelloClientTypeClient"
@@ -279,6 +301,7 @@ type HelloClientMessageAuth struct {
 	parsedUrl *url.URL
 
 	internalParams ClientTypeInternalAuthParams
+	helloV2Params  HelloV2AuthParams
 }
 
 // Type "hello"
@@ -295,8 +318,8 @@ type HelloClientMessage struct {
 }
 
 func (m *HelloClientMessage) CheckValid() error {
-	if m.Version != HelloVersion {
-		return fmt.Errorf("unsupported hello version: %s", m.Version)
+	if m.Version != HelloVersionV1 && m.Version != HelloVersionV2 {
+		return InvalidHelloVersion
 	}
 	if m.ResumeId == "" {
 		if m.Auth.Params == nil || len(*m.Auth.Params) == 0 {
@@ -317,6 +340,17 @@ func (m *HelloClientMessage) CheckValid() error {
 				}
 
 				m.Auth.parsedUrl = u
+			}
+
+			switch m.Version {
+			case HelloVersionV1:
+				// No additional validation necessary.
+			case HelloVersionV2:
+				if err := json.Unmarshal(*m.Auth.Params, &m.Auth.helloV2Params); err != nil {
+					return err
+				} else if err := m.Auth.helloV2Params.CheckValid(); err != nil {
+					return err
+				}
 			}
 		case HelloClientTypeInternal:
 			if err := json.Unmarshal(*m.Auth.Params, &m.Auth.internalParams); err != nil {
