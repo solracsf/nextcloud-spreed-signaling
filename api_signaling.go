@@ -339,6 +339,7 @@ const (
 	ServerFeatureAudioVideoPermissions = "audio-video-permissions"
 	ServerFeatureTransientData         = "transient-data"
 	ServerFeatureInCallAll             = "incall-all"
+	ServerFeatureMultiRoomPings        = "multiroom-pings"
 
 	// Features for internal clients only.
 	ServerFeatureInternalVirtualSessions = "virtual-sessions"
@@ -349,11 +350,13 @@ var (
 		ServerFeatureAudioVideoPermissions,
 		ServerFeatureTransientData,
 		ServerFeatureInCallAll,
+		ServerFeatureMultiRoomPings,
 	}
 	DefaultFeaturesInternal = []string{
 		ServerFeatureInternalVirtualSessions,
 		ServerFeatureTransientData,
 		ServerFeatureInCallAll,
+		ServerFeatureMultiRoomPings,
 	}
 )
 
